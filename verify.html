@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>التحقق من السائق — Face Auth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shared.css">
+  <style>
+    .verify-live {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: #000;
+      aspect-ratio: 4/3;
+      margin-bottom: 20px;
+    }
+    #liveVideo { width:100%; height:100%; object-fit:cover; display:block; }
+    #liveCanvas { position:absolute; top:0; left:0; }
+    .scan-overlay { position:absolute; inset:0; pointer-events:none; }
+    .scan-bar { position:absolute; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,var(--accent),transparent); box-shadow:0 0 10px var(--accent); animation:scanbar 2.5s ease-in-out infinite; }
+    @keyframes scanbar { 0%{top:0;opacity:0} 10%{opacity:1} 90%{opacity:1} 100%{top:100%;opacity:0} }
+
+    /* Big result overlay on video */
+    .live-result-tag {
+      position: absolute;
+      top: 12px; left: 50%; transform: translateX(-50%);
+      padding: 8px 20px; border-radius: 100px;
+      font-size: 14px; font-weight: 700; letter-spacing: 1px;
+      display: none; z-index: 10; white-space: nowrap;
+    }
+    .live-result-tag.approved { background: rgba(0,255,163,.2); border:1px solid var(--accent3); color:var(--accent3); display:block; }
+    .live-result-tag.rejected { background: rgba(255,77,109,.2); border:1px solid var(--danger); color:var(--danger); display:block; }
+
+    .confidence-bar {
+      height: 4px; border-radius: 2px; background: rgba(255,255,255,.05);
+      overflow: hidden; margin-top: 4px;
+    }
+    .confidence-fill {
+      height: 100%; border-radius: 2px;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      transition: width .5s;
+    }
+
+    .last-results {
+      margin-top: 24px;
+    }
+    .last-results h3 { font-size: 14px; color: var(--muted); margin-bottom: 12px; letter-spacing: 1px; }
+    .result-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-radius: 10px;
+      background: rgba(255,255,255,.03); border: 1px solid var(--border);
+      margin-bottom: 8px; font-size: 14px;
+      animation: slideIn .3s ease;
+    }
+    @keyframes slideIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+    .result-row .rr-name { font-weight: 600; }
+    .result-row .rr-time { color: var(--muted); font-size: 12px; }
+    .result-row .rr-badge { padding: 3px 10px; border-radius: 100px; font-size: 12px; font-weight:700; }
+    .rr-badge.ok  { background:rgba(0,255,163,.1); color:var(--accent3); }
+    .rr-badge.no  { background:rgba(255,77,109,.1); color:var(--danger); }
+  </style>
+</head>
+<body>
+  <div class="bg-canvas"></div>
+  <div class="grid-overlay"></div>
+
+  <nav>
+    <a href="index.html" class="nav-logo"><div class="nav-dot"></div> FACE·AUTH</a>
+    <a href="index.html" class="nav-back">← الرئيسية</a>
+  </nav>
+
+  <div class="page-wrap">
+    <div class="page-card">
+
+      <div class="page-header">
+        <div class="page-icon">🔍</div>
+        <h1 class="page-title">التحقق من السائق</h1>
+        <p class="page-sub">شغّل الكاميرا وسيتم التعرف على السائق مقارنةً بالوجوه المصرح لهم</p>
+      </div>
+
+      <!-- Live video -->
+      <div class="verify-live" id="liveWrapper" style="display:none">
+        <video id="liveVideo" autoplay playsinline muted></video>
+        <canvas id="liveCanvas"></canvas>
+        <div class="live-result-tag" id="liveTag"></div>
+        <div class="scan-overlay"><div class="scan-bar"></div></div>
+      </div>
+
+      <!-- Big result -->
+      <div class="result-big" id="bigResult">
+        <div class="rb-icon" id="bigIcon"></div>
+        <div class="rb-status" id="bigStatus"></div>
+        <div class="rb-name" id="bigName"></div>
+        <div style="width:100%;max-width:260px;margin-top:8px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:4px">
+            <span>درجة التطابق</span><span id="confPct">—</span>
+          </div>
+          <div class="confidence-bar"><div class="confidence-fill" id="confBar" style="width:0%"></div></div>
+        </div>
+      </div>
+
+      <div class="status-box" id="statusBox"></div>
+
+      <button class="btn btn-primary" id="btnStart" onclick="startVerify()">🚀 بدء التحقق</button>
+      <button class="btn btn-secondary" id="btnStop" onclick="stopVerify()" style="display:none">⏹ إيقاف</button>
+      <button class="btn btn-secondary" id="btnCapture" onclick="captureAndVerify()" style="display:none">📸 التقاط والتحقق</button>
+
+      <!-- History -->
+      <div class="last-results" id="historySection" style="display:none">
+        <h3>📋 آخر النتائج</h3>
+        <div id="historyList"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+
+  <script>
+    let stream = null;
+    let knownFaces = []; // { name, descriptor (Float32Array) }
+    let history = [];
+
+    async function startVerify() {
+      document.getElementById('btnStart').style.display = 'none';
+      showStatus('loading','⏳ تحميل نماذج الذكاء الاصطناعي...');
+
+      await faceapi.nets.ssdMobilenetv1.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
+      await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
+      await faceapi.nets.faceRecognitionNet.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
+
+      showStatus('loading','⏳ تحميل الوجوه المصرح لهم من Firebase...');
+      await loadKnownFaces();
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video:{ width:640, height:480, facingMode:'user' } });
+        const video = document.getElementById('liveVideo');
+        video.srcObject = stream;
+        document.getElementById('liveWrapper').style.display = 'block';
+        document.getElementById('btnStop').style.display = 'flex';
+        document.getElementById('btnCapture').style.display = 'flex';
+        showStatus('success','✅ الكاميرا تعمل — اضغط "التقاط والتحقق" عندما يكون الوجه واضحًا');
+      } catch(e) {
+        document.getElementById('btnStart').style.display = 'flex';
+        showStatus('error','❌ ' + e.message);
+      }
+    }
+
+    async function loadKnownFaces() {
+      knownFaces = [];
+      // Load owner
+      const ownerSnap = await db.ref('owner').once('value');
+      const owner = ownerSnap.val();
+      if (owner && owner.descriptor) {
+        knownFaces.push({ name: owner.name, descriptor: new Float32Array(owner.descriptor) });
+      }
+      // Load authorized users
+      const usersSnap = await db.ref('authorized_users').once('value');
+      const users = usersSnap.val();
+      if (users) {
+        Object.values(users).forEach(u => {
+          if (u.descriptor) knownFaces.push({ name: u.name, descriptor: new Float32Array(u.descriptor) });
+        });
+      }
+    }
+
+    async function captureAndVerify() {
+      if (knownFaces.length === 0) { showStatus('error','❌ لا توجد وجوه مسجلة — سجّل المالك أولاً'); return; }
+      const video = document.getElementById('liveVideo');
+      showStatus('loading','🧠 جاري التحليل...');
+      document.getElementById('btnCapture').disabled = true;
+
+      const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+
+      if (!detection) {
+        showStatus('error','❌ لم يتم اكتشاف وجه — تأكد من الإضاءة');
+        document.getElementById('btnCapture').disabled = false;
+        return;
+      }
+
+      const queryDesc = detection.descriptor;
+      let bestMatch = null, bestDist = Infinity;
+
+      knownFaces.forEach(kf => {
+        const dist = faceapi.euclideanDistance(queryDesc, kf.descriptor);
+        if (dist < bestDist) { bestDist = dist; bestMatch = kf; }
+      });
+
+      const THRESHOLD = 0.6;
+      const approved = bestDist < THRESHOLD;
+      const confidence = Math.max(0, Math.min(100, Math.round((1 - bestDist) * 100)));
+      const personName = approved ? bestMatch.name : 'Unknown';
+      const status = approved ? 'approved' : 'rejected';
+
+      // Update Firebase
+      await db.ref('verification_result').set({
+        status,
+        person: personName,
+        confidence: confidence,
+        distance: bestDist,
+        timestamp: new Date().toISOString()
+      });
+
+      // Show big result
+      showBigResult(approved, personName, confidence);
+
+      // Add to history
+      addHistory(personName, approved, confidence);
+
+      // Tag on video
+      const tag = document.getElementById('liveTag');
+      tag.className = 'live-result-tag ' + (approved ? 'approved' : 'rejected');
+      tag.textContent = approved ? `✅ ${personName}` : '❌ غير مصرح';
+
+      document.getElementById('btnCapture').disabled = false;
+      hideStatus();
+    }
+
+    function showBigResult(approved, name, confidence) {
+      const el = document.getElementById('bigResult');
+      el.classList.add('show');
+      document.getElementById('bigIcon').textContent = approved ? '✅' : '🚫';
+      document.getElementById('bigStatus').textContent = approved ? 'مصرح' : 'غير مصرح';
+      document.getElementById('bigStatus').className = 'rb-status ' + (approved ? 'result-approved' : 'result-rejected');
+      document.getElementById('bigName').textContent = name;
+      document.getElementById('confPct').textContent = confidence + '%';
+      document.getElementById('confBar').style.width = confidence + '%';
+      document.getElementById('confBar').style.background = approved
+        ? 'linear-gradient(90deg,var(--accent3),#00c875)'
+        : 'linear-gradient(90deg,var(--danger),#c9184a)';
+    }
+
+    function addHistory(name, approved, conf) {
+      history.unshift({ name, approved, conf, time: new Date().toLocaleTimeString('ar') });
+      if (history.length > 5) history.pop();
+      const section = document.getElementById('historySection');
+      const list = document.getElementById('historyList');
+      section.style.display = 'block';
+      list.innerHTML = history.map(h => `
+        <div class="result-row">
+          <div>
+            <div class="rr-name">${h.name}</div>
+            <div class="rr-time">${h.time} — ${h.conf}% تطابق</div>
+          </div>
+          <span class="rr-badge ${h.approved ? 'ok' : 'no'}">${h.approved ? '✓ مصرح' : '✕ مرفوض'}</span>
+        </div>
+      `).join('');
+    }
+
+    function stopVerify() {
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      document.getElementById('liveWrapper').style.display = 'none';
+      document.getElementById('btnStop').style.display = 'none';
+      document.getElementById('btnCapture').style.display = 'none';
+      document.getElementById('btnStart').style.display = 'flex';
+      document.getElementById('liveTag').className = 'live-result-tag';
+      hideStatus();
+    }
+
+    function showStatus(type, msg) {
+      const el = document.getElementById('statusBox');
+      el.className = 'status-box show status-' + type;
+      el.innerHTML = msg;
+    }
+    function hideStatus() { document.getElementById('statusBox').className = 'status-box'; }
+  </script>
+</body>
+</html>
