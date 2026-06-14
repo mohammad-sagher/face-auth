@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>إضافة مستخدم — Face Auth</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="shared.css">
+</head>
+<body>
+  <div class="bg-canvas"></div>
+  <div class="grid-overlay"></div>
+
+  <nav>
+    <a href="index.html" class="nav-logo"><div class="nav-dot"></div> FACE·AUTH</a>
+    <a href="index.html" class="nav-back">← الرئيسية</a>
+  </nav>
+
+  <div class="page-wrap">
+    <div class="page-card">
+
+      <div class="steps-indicator">
+        <div class="si-dot active" id="dot1"></div>
+        <div class="si-dot" id="dot2"></div>
+        <div class="si-dot" id="dot3"></div>
+      </div>
+
+      <!-- Step 1: Verify owner password -->
+      <div id="step1">
+        <div class="page-header">
+          <div class="page-icon">🔑</div>
+          <h1 class="page-title">إضافة مستخدم مصرح</h1>
+          <p class="page-sub">أدخل كلمة مرور المالك للتحقق من صلاحيتك</p>
+        </div>
+        <div class="field">
+          <label>كلمة مرور المالك</label>
+          <input type="password" id="ownerPass" placeholder="كلمة المرور التي سجّلتها كمالك">
+        </div>
+        <div class="status-box" id="statusBox1"></div>
+        <button class="btn btn-primary" onclick="verifyOwner()">✅ تحقق والمتابعة</button>
+      </div>
+
+      <!-- Step 2: Capture face -->
+      <div id="step2" style="display:none">
+        <div class="page-header">
+          <div class="page-icon">📷</div>
+          <h1 class="page-title">التقاط وجه المستخدم</h1>
+          <p class="page-sub">شغّل الكاميرا والتقط صورة الشخص المصرح له</p>
+        </div>
+
+        <div class="video-wrapper" id="videoWrapper" style="display:none">
+          <video id="video" autoplay playsinline muted></video>
+          <div class="scan-overlay"><div class="scan-bar"></div></div>
+        </div>
+        <img id="capturedPhoto" alt="الصورة">
+
+        <div class="status-box" id="statusBox2"></div>
+        <button class="btn btn-primary" id="btnCamera" onclick="startCamera()">📷 تشغيل الكاميرا</button>
+        <button class="btn btn-secondary" id="btnCapture" onclick="capturePhoto()" style="display:none">✅ التقاط الصورة</button>
+        <button class="btn btn-secondary" id="btnRetake" onclick="retakePhoto()" style="display:none">🔄 إعادة الالتقاط</button>
+        <button class="btn btn-primary" id="btnNext" onclick="goStep3()" style="display:none">التالي →</button>
+      </div>
+
+      <!-- Step 3: Enter name & save -->
+      <div id="step3" style="display:none">
+        <div class="page-header">
+          <div class="page-icon">✍️</div>
+          <h1 class="page-title">اسم المستخدم</h1>
+          <p class="page-sub">أدخل اسم الشخص المصرح له ليظهر في نتائج التحقق</p>
+        </div>
+        <div class="field">
+          <label>الاسم الكامل</label>
+          <input type="text" id="userName" placeholder="مثال: أحمد محمد">
+        </div>
+        <div class="status-box" id="statusBox3"></div>
+        <button class="btn btn-primary" onclick="saveUser()">💾 حفظ المستخدم</button>
+        <button class="btn btn-secondary" style="margin-top:8px" onclick="goStep2()">← رجوع</button>
+      </div>
+
+      <!-- Step 4: Success -->
+      <div id="step4" style="display:none">
+        <div class="result-big show">
+          <div class="rb-icon">✅</div>
+          <div class="rb-status result-approved">تمت الإضافة!</div>
+          <div class="rb-name" id="savedName"></div>
+          <p style="color:var(--muted);font-size:14px;text-align:center;margin-top:8px">تم حفظ بصمة الوجه في Firebase بنجاح</p>
+        </div>
+        <button class="btn btn-primary" onclick="addAnother()">➕ إضافة شخص آخر</button>
+        <a href="verify.html" class="btn btn-secondary" style="margin-top:8px">🔍 تجربة التحقق</a>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+
+  <script>
+    let stream = null;
+    let capturedDescriptor = null;
+    const video = document.getElementById('video');
+
+    async function verifyOwner() {
+      const pass = document.getElementById('ownerPass').value;
+      if (!pass) { showStatus('statusBox1','error','❌ أدخل كلمة المرور'); return; }
+      showStatus('statusBox1','loading','⏳ جاري التحقق...');
+      try {
+        const snap = await db.ref('owner').once('value');
+        const owner = snap.val();
+        if (!owner) { showStatus('statusBox1','error','❌ لا يوجد مالك مسجل — سجّل المالك أولاً'); return; }
+        if (btoa(pass) !== owner.password) { showStatus('statusBox1','error','❌ كلمة المرور غير صحيحة'); return; }
+        document.getElementById('step1').style.display = 'none';
+        document.getElementById('step2').style.display = 'block';
+        setDot(1);
+      } catch(e) { showStatus('statusBox1','error','❌ خطأ: ' + e.message); }
+    }
+
+    async function startCamera() {
+      document.getElementById('btnCamera').style.display = 'none';
+      showStatus('statusBox2','loading','⏳ تحميل نماذج AI...');
+      await faceapi.nets.ssdMobilenetv1.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
+      await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
+      await faceapi.nets.faceRecognitionNet.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { width:640, height:480, facingMode:'user' } });
+        video.srcObject = stream;
+        document.getElementById('videoWrapper').style.display = 'block';
+        document.getElementById('btnCapture').style.display = 'flex';
+        showStatus('statusBox2','success','📷 الكاميرا تعمل');
+      } catch(e) {
+        document.getElementById('btnCamera').style.display = 'flex';
+        showStatus('statusBox2','error','❌ ' + e.message);
+      }
+    }
+
+    async function capturePhoto() {
+      showStatus('statusBox2','loading','🧠 تحليل الوجه...');
+      document.getElementById('btnCapture').disabled = true;
+      const det = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
+      if (!det) {
+        showStatus('statusBox2','error','❌ لم يتم اكتشاف وجه');
+        document.getElementById('btnCapture').disabled = false;
+        return;
+      }
+      capturedDescriptor = Array.from(det.descriptor);
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      const photo = document.getElementById('capturedPhoto');
+      photo.src = canvas.toDataURL(); photo.style.display = 'block';
+      document.getElementById('videoWrapper').style.display = 'none';
+      if (stream) stream.getTracks().forEach(t => t.stop());
+      showStatus('statusBox2','success','✅ تم استخراج البصمة الرقمية');
+      document.getElementById('btnCapture').style.display = 'none';
+      document.getElementById('btnRetake').style.display = 'flex';
+      document.getElementById('btnNext').style.display = 'flex';
+    }
+
+    function retakePhoto() {
+      capturedDescriptor = null;
+      document.getElementById('capturedPhoto').style.display = 'none';
+      document.getElementById('btnRetake').style.display = 'none';
+      document.getElementById('btnNext').style.display = 'none';
+      document.getElementById('btnCamera').style.display = 'flex';
+    }
+
+    function goStep2() {
+      document.getElementById('step3').style.display = 'none';
+      document.getElementById('step2').style.display = 'block';
+      setDot(1);
+    }
+    function goStep3() {
+      document.getElementById('step2').style.display = 'none';
+      document.getElementById('step3').style.display = 'block';
+      setDot(2);
+    }
+
+    async function saveUser() {
+      const name = document.getElementById('userName').value.trim();
+      if (!name) { showStatus('statusBox3','error','❌ أدخل اسم المستخدم'); return; }
+      showStatus('statusBox3','loading','⏳ جاري الحفظ...');
+      try {
+        const key = db.ref('authorized_users').push().key;
+        await db.ref('authorized_users/' + key).set({
+          name,
+          descriptor: capturedDescriptor,
+          addedAt: new Date().toISOString()
+        });
+        document.getElementById('step3').style.display = 'none';
+        document.getElementById('step4').style.display = 'block';
+        document.getElementById('savedName').textContent = name + ' — تمت الإضافة بنجاح ✓';
+      } catch(e) { showStatus('statusBox3','error','❌ ' + e.message); }
+    }
+
+    function addAnother() {
+      capturedDescriptor = null;
+      document.getElementById('capturedPhoto').style.display = 'none';
+      document.getElementById('step4').style.display = 'none';
+      document.getElementById('step2').style.display = 'block';
+      document.getElementById('btnCamera').style.display = 'flex';
+      document.getElementById('btnCapture').style.display = 'none';
+      document.getElementById('btnRetake').style.display = 'none';
+      document.getElementById('btnNext').style.display = 'none';
+      setDot(1);
+    }
+
+    function setDot(active) {
+      ['dot1','dot2','dot3'].forEach((id,i) => {
+        const el = document.getElementById(id);
+        el.className = 'si-dot' + (i < active ? ' done' : i === active ? ' active' : '');
+      });
+    }
+    function showStatus(id, type, msg) {
+      const el = document.getElementById(id);
+      el.className = 'status-box show status-' + type;
+      el.innerHTML = msg;
+    }
+  </script>
+</body>
+</html>
