@@ -1,1 +1,639 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Face Auth — نظام التعرف على الوجه</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #03060f;
+      --surface: #080f1e;
+      --card: #0d1626;
+      --accent: #00d4ff;
+      --accent2: #7b2fff;
+      --accent3: #00ffa3;
+      --text: #e8f0fe;
+      --muted: #5a6a8a;
+      --border: rgba(0,212,255,0.15);
+      --glow: 0 0 40px rgba(0,212,255,0.25);
+      --glow2: 0 0 40px rgba(123,47,255,0.3);
+    }
 
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Tajawal', sans-serif;
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* ─── ANIMATED BG ─── */
+    .bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .bg-canvas::before {
+      content: '';
+      position: absolute;
+      width: 900px; height: 900px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(0,212,255,0.07) 0%, transparent 70%);
+      top: -200px; right: -200px;
+      animation: pulse 8s ease-in-out infinite;
+    }
+    .bg-canvas::after {
+      content: '';
+      position: absolute;
+      width: 700px; height: 700px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(123,47,255,0.08) 0%, transparent 70%);
+      bottom: -100px; left: -100px;
+      animation: pulse 10s ease-in-out infinite reverse;
+    }
+    @keyframes pulse {
+      0%,100% { transform: scale(1); opacity: 0.7; }
+      50% { transform: scale(1.15); opacity: 1; }
+    }
+
+    /* Grid lines */
+    .grid-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 48px;
+      background: rgba(3,6,15,0.8);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-weight: 700;
+      font-size: 20px;
+      letter-spacing: 2px;
+      color: var(--accent);
+    }
+    .nav-logo .dot {
+      width: 10px; height: 10px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--accent);
+      animation: blink 2s ease-in-out infinite;
+    }
+    @keyframes blink {
+      0%,100% { opacity: 1; } 50% { opacity: 0.3; }
+    }
+    .nav-links { display: flex; gap: 8px; }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 15px;
+      padding: 8px 18px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+    .nav-links a:hover { color: var(--accent); background: rgba(0,212,255,0.07); }
+
+    /* ─── HERO ─── */
+    .hero {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0,212,255,0.08);
+      border: 1px solid rgba(0,212,255,0.25);
+      border-radius: 100px;
+      padding: 8px 20px;
+      font-size: 13px;
+      color: var(--accent);
+      margin-bottom: 36px;
+      letter-spacing: 1px;
+    }
+    .hero-badge span { color: var(--muted); }
+
+    /* 3D Face Scan Visual */
+    .face-3d-container {
+      position: relative;
+      width: 280px;
+      height: 280px;
+      margin: 0 auto 48px;
+    }
+    .face-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid transparent;
+    }
+    .face-ring-1 {
+      border-color: rgba(0,212,255,0.5);
+      animation: spin3d 4s linear infinite;
+      box-shadow: 0 0 20px rgba(0,212,255,0.3), inset 0 0 20px rgba(0,212,255,0.1);
+    }
+    .face-ring-2 {
+      inset: 16px;
+      border-color: rgba(123,47,255,0.4);
+      animation: spin3d 6s linear infinite reverse;
+    }
+    .face-ring-3 {
+      inset: 32px;
+      border-color: rgba(0,255,163,0.3);
+      animation: spin3d 8s linear infinite;
+    }
+    @keyframes spin3d {
+      from { transform: rotate(0deg) rotateX(60deg); }
+      to   { transform: rotate(360deg) rotateX(60deg); }
+    }
+
+    .face-center {
+      position: absolute;
+      inset: 48px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 35%, rgba(0,212,255,0.15), rgba(123,47,255,0.1), transparent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .face-icon {
+      font-size: 72px;
+      filter: drop-shadow(0 0 24px rgba(0,212,255,0.6));
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    /* Scan line */
+    .scan-line {
+      position: absolute;
+      left: 48px; right: 48px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      box-shadow: 0 0 12px var(--accent);
+      animation: scan 2.5s ease-in-out infinite;
+      top: 48px;
+    }
+    @keyframes scan {
+      0% { top: 48px; opacity: 0; }
+      10% { opacity: 1; }
+      90% { opacity: 1; }
+      100% { top: calc(100% - 48px); opacity: 0; }
+    }
+
+    .corner {
+      position: absolute;
+      width: 24px; height: 24px;
+      border-color: var(--accent);
+      border-style: solid;
+      border-width: 0;
+    }
+    .corner-tl { top: 48px; right: 48px; border-top-width: 2px; border-right-width: 2px; border-radius: 0 4px 0 0; }
+    .corner-tr { top: 48px; left: 48px; border-top-width: 2px; border-left-width: 2px; border-radius: 4px 0 0 0; }
+    .corner-bl { bottom: 48px; right: 48px; border-bottom-width: 2px; border-right-width: 2px; border-radius: 0 0 0 4px; }
+    .corner-br { bottom: 48px; left: 48px; border-bottom-width: 2px; border-left-width: 2px; border-radius: 0 0 4px 0; }
+
+    .hero h1 {
+      font-size: clamp(36px, 6vw, 72px);
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 18px;
+      color: var(--muted);
+      max-width: 560px;
+      line-height: 1.8;
+      margin-bottom: 48px;
+    }
+
+    .hero-btns {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 32px;
+      border-radius: 12px;
+      font-family: 'Tajawal', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.3s;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      box-shadow: 0 8px 32px rgba(0,212,255,0.35);
+    }
+    .btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 48px rgba(0,212,255,0.5);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-outline:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(0,212,255,0.05);
+      transform: translateY(-3px);
+    }
+
+    /* ─── SECTION ─── */
+    section {
+      position: relative;
+      z-index: 1;
+      padding: 100px 24px;
+    }
+    .section-label {
+      font-size: 12px;
+      letter-spacing: 3px;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(28px, 4vw, 48px);
+      font-weight: 900;
+      margin-bottom: 16px;
+    }
+    .section-sub {
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.7;
+      max-width: 560px;
+    }
+
+    /* ─── STEPS (3D Cards) ─── */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      max-width: 1100px;
+      margin: 60px auto 0;
+    }
+    .step-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 40px 32px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.4s, box-shadow 0.4s;
+      transform-style: preserve-3d;
+      cursor: default;
+    }
+    .step-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(0,212,255,0.05) 0%, transparent 60%);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .step-card:hover { transform: translateY(-8px) rotateX(3deg); box-shadow: var(--glow), 0 32px 64px rgba(0,0,0,0.5); }
+    .step-card:hover::before { opacity: 1; }
+
+    .step-num {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 48px;
+      font-weight: 700;
+      color: rgba(0,212,255,0.1);
+      position: absolute;
+      top: 20px;
+      left: 24px;
+      line-height: 1;
+    }
+    .step-icon {
+      font-size: 40px;
+      margin-bottom: 20px;
+      filter: drop-shadow(0 0 12px rgba(0,212,255,0.4));
+    }
+    .step-card h3 {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .step-card p {
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.7;
+    }
+    .step-tag {
+      display: inline-block;
+      margin-top: 20px;
+      background: rgba(0,212,255,0.08);
+      border: 1px solid rgba(0,212,255,0.2);
+      color: var(--accent);
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 100px;
+      letter-spacing: 1px;
+    }
+
+    /* ─── TECH SECTION ─── */
+    .tech-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      max-width: 900px;
+      margin: 48px auto 0;
+      justify-content: center;
+    }
+    .tech-pill {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 12px 24px;
+      font-size: 15px;
+      font-weight: 500;
+      transition: all 0.3s;
+    }
+    .tech-pill:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: scale(1.05);
+      box-shadow: var(--glow);
+    }
+    .tech-pill .ti { font-size: 20px; }
+
+    /* ─── FLOW DIAGRAM ─── */
+    .flow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      flex-wrap: wrap;
+      max-width: 1000px;
+      margin: 60px auto 0;
+    }
+    .flow-node {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px 28px;
+      text-align: center;
+      min-width: 130px;
+      position: relative;
+      transition: all 0.3s;
+    }
+    .flow-node:hover { border-color: var(--accent); box-shadow: var(--glow); }
+    .flow-node .fn-icon { font-size: 32px; margin-bottom: 8px; }
+    .flow-node .fn-label { font-size: 13px; color: var(--muted); }
+    .flow-node .fn-title { font-size: 15px; font-weight: 700; }
+    .flow-arrow {
+      color: var(--accent);
+      font-size: 24px;
+      margin: 0 8px;
+      opacity: 0.5;
+    }
+    .flow-node.approved { border-color: var(--accent3); }
+    .flow-node.approved .fn-icon { filter: drop-shadow(0 0 8px var(--accent3)); }
+    .flow-node.rejected { border-color: #ff4d6d; }
+
+    /* ─── CTA ─── */
+    .cta-section {
+      background: linear-gradient(135deg, rgba(0,212,255,0.05), rgba(123,47,255,0.05));
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    .cta-section h2 {
+      font-size: clamp(28px, 5vw, 52px);
+      font-weight: 900;
+      margin-bottom: 24px;
+      background: linear-gradient(135deg, #fff, var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .cta-section p { color: var(--muted); font-size: 18px; margin-bottom: 40px; }
+
+    /* ─── FOOTER ─── */
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 40px 24px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 768px) {
+      nav { padding: 16px 20px; }
+      .nav-links { display: none; }
+      .face-3d-container { width: 200px; height: 200px; }
+      .flow { gap: 16px; }
+      .flow-arrow { transform: rotate(90deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Background -->
+  <div class="bg-canvas"></div>
+  <div class="grid-overlay"></div>
+
+  <!-- Nav -->
+  <nav>
+    <div class="nav-logo">
+      <div class="dot"></div>
+      FACE·AUTH
+    </div>
+    <div class="nav-links">
+      <a href="register.html">تسجيل المالك</a>
+      <a href="add-user.html">إضافة مستخدم</a>
+      <a href="verify.html">التحقق</a>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-badge">
+      <span>🤖</span> مدعوم بـ Face Recognition AI <span>— Pre-trained CNN</span>
+    </div>
+
+    <div class="face-3d-container">
+      <div class="face-ring face-ring-1"></div>
+      <div class="face-ring face-ring-2"></div>
+      <div class="face-ring face-ring-3"></div>
+      <div class="scan-line"></div>
+      <div class="corner corner-tl"></div>
+      <div class="corner corner-tr"></div>
+      <div class="corner corner-bl"></div>
+      <div class="corner corner-br"></div>
+      <div class="face-center">
+        <div class="face-icon">🪪</div>
+      </div>
+    </div>
+
+    <h1>التحقق من الهوية<br>بالذكاء الاصطناعي</h1>
+    <p>نظام متطور للتعرف على الوجه يعمل مباشرة في المتصفح باستخدام Face Embeddings المستخرجة من نماذج CNN مدربة مسبقًا</p>
+
+    <div class="hero-btns">
+      <a href="register.html" class="btn btn-primary">🚀 ابدأ — تسجيل المالك</a>
+      <a href="verify.html" class="btn btn-outline">🔍 تجربة التحقق</a>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <section id="how">
+    <div style="text-align:center; max-width:700px; margin:0 auto 0;">
+      <div class="section-label">آلية العمل</div>
+      <h2 class="section-title">ثلاث خطوات فقط</h2>
+      <p class="section-sub" style="margin:0 auto;">من التسجيل إلى التحقق، النظام يعمل بالكامل في المتصفح دون أي خوادم خاصة</p>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">01</div>
+        <div class="step-icon">👤</div>
+        <h3>تسجيل المالك</h3>
+        <p>تشغيل الكاميرا والتقاط صورة لمالك السيارة. يتم استخراج Face Embedding ورفعها إلى Firebase تلقائيًا.</p>
+        <span class="step-tag">REGISTER OWNER</span>
+      </div>
+      <div class="step-card">
+        <div class="step-num">02</div>
+        <div class="step-icon">➕</div>
+        <h3>إضافة مستخدم مصرح</h3>
+        <p>إدخال كلمة مرور المالك ثم التقاط صورة للشخص الجديد وحفظ بصمته الرقمية في قاعدة البيانات.</p>
+        <span class="step-tag">ADD USER</span>
+      </div>
+      <div class="step-card">
+        <div class="step-num">03</div>
+        <div class="step-icon">🔍</div>
+        <h3>التحقق من السائق</h3>
+        <p>مقارنة وجه السائق مع جميع الوجوه المخزنة وإرسال النتيجة فورًا إلى Firebase لقراءتها من التطبيق.</p>
+        <span class="step-tag">VERIFY DRIVER</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- AI Flow -->
+  <section id="flow" style="background: var(--surface);">
+    <div style="text-align:center; max-width:700px; margin:0 auto 0;">
+      <div class="section-label">خوارزمية الذكاء الاصطناعي</div>
+      <h2 class="section-title">Face Recognition Pipeline</h2>
+      <p class="section-sub" style="margin:0 auto;">نموذج CNN مدرب مسبقًا يستخرج بصمة رقمية 128-بعد لكل وجه ويقارنها بالمسافة الإقليدية</p>
+    </div>
+
+    <div class="flow">
+      <div class="flow-node">
+        <div class="fn-icon">📷</div>
+        <div class="fn-title">Camera Frame</div>
+        <div class="fn-label">إطار الكاميرا</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="fn-icon">🔲</div>
+        <div class="fn-title">Face Detection</div>
+        <div class="fn-label">SSD MobileNet</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="fn-icon">🧠</div>
+        <div class="fn-title">CNN Embedding</div>
+        <div class="fn-label">128-dim vector</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node">
+        <div class="fn-icon">📊</div>
+        <div class="fn-title">Distance Match</div>
+        <div class="fn-label">Euclidean &lt; 0.6</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node approved">
+        <div class="fn-icon">✅</div>
+        <div class="fn-title">Approved</div>
+        <div class="fn-label">Firebase → App</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tech Stack -->
+  <section id="tech">
+    <div style="text-align:center; max-width:700px; margin:0 auto 0;">
+      <div class="section-label">التقنيات المستخدمة</div>
+      <h2 class="section-title">Stack بسيط وفعّال</h2>
+    </div>
+    <div class="tech-row">
+      <div class="tech-pill"><span class="ti">🌐</span> HTML5 / CSS3</div>
+      <div class="tech-pill"><span class="ti">⚡</span> Vanilla JavaScript</div>
+      <div class="tech-pill"><span class="ti">🧠</span> Face-api.js</div>
+      <div class="tech-pill"><span class="ti">🔥</span> Firebase Realtime DB</div>
+      <div class="tech-pill"><span class="ti">📷</span> WebRTC Camera API</div>
+      <div class="tech-pill"><span class="ti">🚀</span> GitHub Pages</div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <h2>جاهز للبدء؟</h2>
+    <p>سجّل المالك أولاً ثم أضف المستخدمين المصرح لهم</p>
+    <div class="hero-btns">
+      <a href="register.html" class="btn btn-primary">👤 تسجيل المالك</a>
+      <a href="add-user.html" class="btn btn-outline">➕ إضافة مستخدم</a>
+      <a href="verify.html" class="btn btn-outline">🔍 التحقق من السائق</a>
+    </div>
+  </section>
+
+  <footer>
+    <p>Face Authentication System — مبني بـ Face-api.js & Firebase &nbsp;|&nbsp; <span style="color:var(--accent)">Pre-trained CNN Model</span></p>
+  </footer>
+
+</body>
+</html>
