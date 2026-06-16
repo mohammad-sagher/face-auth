@@ -26,7 +26,41 @@
         <div class="si-dot" id="dot2"></div>
         <div class="si-dot" id="dot3"></div>
       </div>
+        <div id="ownerExistsBox" style="display:none">
 
+  <div class="page-header">
+    <div class="page-icon">🔒</div>
+
+    <h1 class="page-title">
+      يوجد مالك مسجل مسبقاً
+    </h1>
+
+    <p class="page-sub">
+      لإعادة تسجيل مالك جديد يجب إدخال كلمة مرور المدير
+    </p>
+  </div>
+
+  <div class="field">
+    <label>Master Password</label>
+
+    <input
+      type="password"
+      id="reRegisterPass">
+  </div>
+
+  <div class="status-box"
+       id="ownerExistsStatus">
+  </div>
+
+  <button
+    class="btn btn-primary"
+    onclick="unlockOwnerRegistration()">
+
+    إعادة تسجيل المالك
+
+  </button>
+
+</div>
       <!-- Step 1: Camera -->
       <div id="step1">
         <div class="page-header">
@@ -52,28 +86,63 @@
       </div>
 
       <!-- Step 2: Name & Password -->
-      <div id="step2" style="display:none">
-        <div class="page-header">
-          <div class="page-icon">🔐</div>
-          <h1 class="page-title">بيانات المالك</h1>
-          <p class="page-sub">أدخل اسمك وكلمة مرور خاصة بك لحماية النظام</p>
-        </div>
-        <div class="field">
-          <label>الاسم الكامل</label>
-          <input type="text" id="ownerName" placeholder="مثال: محمد أحمد">
-        </div>
-        <div class="field">
-          <label>كلمة المرور</label>
-          <input type="password" id="ownerPass" placeholder="ستُستخدم عند إضافة مستخدمين">
-        </div>
-        <div class="field">
-          <label>تأكيد كلمة المرور</label>
-          <input type="password" id="ownerPassConfirm" placeholder="أعد كتابة كلمة المرور">
-        </div>
-        <div class="status-box" id="statusBox2"></div>
-        <button class="btn btn-primary" onclick="saveOwner()">💾 حفظ وتسجيل</button>
-        <button class="btn btn-secondary" style="margin-top:8px" onclick="goStep1()">← رجوع</button>
+        <div id="step2" style="display:none">
+
+      <div class="page-header">
+        <div class="page-icon">🔐</div>
+        <h1 class="page-title">بيانات المالك</h1>
+        <p class="page-sub">
+          أدخل بيانات المالك وكلمات المرور الخاصة بالنظام
+        </p>
       </div>
+
+      <div class="field">
+        <label>الاسم الكامل</label>
+        <input type="text" id="ownerName"
+          placeholder="مثال: محمد أحمد">
+      </div>
+
+      <div class="field">
+        <label>كلمة مرور إضافة المستخدمين</label>
+        <input type="password"
+          id="userPass"
+          placeholder="تستخدم عند إضافة مستخدم جديد">
+      </div>
+
+      <div class="field">
+        <label>تأكيد كلمة مرور المستخدمين</label>
+        <input type="password"
+          id="userPassConfirm">
+      </div>
+
+      <div class="field">
+        <label>كلمة مرور المدير (Master Password)</label>
+        <input type="password"
+          id="masterPass"
+          placeholder="تستخدم لإعادة تسجيل المالك">
+      </div>
+
+      <div class="field">
+        <label>تأكيد كلمة مرور المدير</label>
+        <input type="password"
+          id="masterPassConfirm">
+      </div>
+
+      <div class="status-box" id="statusBox2"></div>
+
+      <button class="btn btn-primary"
+        onclick="saveOwner()">
+        💾 حفظ وتسجيل
+      </button>
+
+      <button
+        class="btn btn-secondary"
+        style="margin-top:8px"
+        onclick="goStep1()">
+        ← رجوع
+      </button>
+
+    </div>
 
       <!-- Step 3: Success -->
       <div id="step3" style="display:none">
@@ -102,6 +171,7 @@
     let stream = null;
     let capturedDescriptor = null;
     const video = document.getElementById('video');
+    let existingOwner = null;
 
     // Load models
     async function loadModels() {
@@ -180,34 +250,191 @@ await faceapi.nets.faceRecognitionNet.loadFromUri('./models');
       document.getElementById('step2').style.display = 'block';
       setDot(1);
     }
+    window.addEventListener("load", async () => {
+
+  const snapshot =
+  await db.ref("owner").once("value");
+
+  if(snapshot.exists()){
+
+    existingOwner =
+    snapshot.val();
+
+    document.getElementById("step1")
+      .style.display = "none";
+
+    document.getElementById(
+      "ownerExistsBox"
+    ).style.display = "block";
+
+  }
+
+});
+function unlockOwnerRegistration(){
+
+  const pass =
+  document.getElementById(
+    "reRegisterPass"
+  ).value;
+
+  if(
+    pass !==
+    atob(existingOwner.masterPassword)
+  ){
+
+    showStatus(
+      "ownerExistsStatus",
+      "error",
+      "❌ كلمة مرور المدير غير صحيحة"
+    );
+
+    return;
+  }
+
+  document.getElementById(
+    "ownerExistsBox"
+  ).style.display = "none";
+
+  document.getElementById(
+    "step1"
+  ).style.display = "block";
+
+}
 
     async function saveOwner() {
-      const name = document.getElementById('ownerName').value.trim();
-      const pass = document.getElementById('ownerPass').value;
-      const confirm = document.getElementById('ownerPassConfirm').value;
 
-      if (!name) { showStatus('statusBox2','error','❌ أدخل اسمك الكامل'); return; }
-      if (!pass || pass.length < 4) { showStatus('statusBox2','error','❌ كلمة المرور يجب أن تكون 4 أحرف على الأقل'); return; }
-      if (pass !== confirm) { showStatus('statusBox2','error','❌ كلمتا المرور غير متطابقتين'); return; }
+  const name =
+  document.getElementById(
+    'ownerName'
+  ).value.trim();
 
-      showStatus('statusBox2','loading','⏳ جاري الحفظ في Firebase...');
+  const userPass =
+  document.getElementById(
+    'userPass'
+  ).value;
 
-      try {
-        await db.ref('owner').set({
-          name,
-          password: btoa(pass), // base64 simple encoding
-          descriptor: capturedDescriptor,
-          registeredAt: new Date().toISOString()
-        });
+  const userPassConfirm =
+  document.getElementById(
+    'userPassConfirm'
+  ).value;
 
-        document.getElementById('step2').style.display = 'none';
-        document.getElementById('step3').style.display = 'block';
-        document.getElementById('successName').textContent = 'مرحباً، ' + name;
-        setDot(2);
-      } catch(e) {
-        showStatus('statusBox2','error','❌ خطأ في الحفظ: ' + e.message);
-      }
-    }
+  const masterPass =
+  document.getElementById(
+    'masterPass'
+  ).value;
+
+  const masterPassConfirm =
+  document.getElementById(
+    'masterPassConfirm'
+  ).value;
+
+  if (!name) {
+
+    showStatus(
+      'statusBox2',
+      'error',
+      '❌ أدخل الاسم'
+    );
+
+    return;
+  }
+
+  if (userPass.length < 6) {
+
+    showStatus(
+      'statusBox2',
+      'error',
+      '❌ كلمة مرور المستخدمين 6 أحرف على الأقل'
+    );
+
+    return;
+  }
+
+  if (userPass !== userPassConfirm) {
+
+    showStatus(
+      'statusBox2',
+      'error',
+      '❌ تأكيد كلمة مرور المستخدمين غير صحيح'
+    );
+
+    return;
+  }
+
+  if (masterPass.length < 8) {
+
+    showStatus(
+      'statusBox2',
+      'error',
+      '❌ كلمة مرور المدير يجب أن تكون أقوى'
+    );
+
+    return;
+  }
+
+  if (masterPass !== masterPassConfirm) {
+
+    showStatus(
+      'statusBox2',
+      'error',
+      '❌ تأكيد كلمة مرور المدير غير صحيح'
+    );
+
+    return;
+  }
+
+  showStatus(
+    'statusBox2',
+    'loading',
+    '⏳ جاري الحفظ...'
+  );
+
+  try {
+
+    await db.ref('owner').set({
+
+      name: name,
+
+      userPassword:
+      btoa(userPass),
+
+      masterPassword:
+      btoa(masterPass),
+
+      descriptor:
+      capturedDescriptor,
+
+      registeredAt:
+      new Date().toISOString()
+
+    });
+
+    document.getElementById(
+      'step2'
+    ).style.display = 'none';
+
+    document.getElementById(
+      'step3'
+    ).style.display = 'block';
+
+    document.getElementById(
+      'successName'
+    ).textContent =
+    'مرحباً، ' + name;
+
+    setDot(2);
+
+  } catch(e){
+
+    showStatus(
+      'statusBox2',
+      'error',
+      e.message
+    );
+
+  }
+
+}
 
     function setDot(active) {
       ['dot1','dot2','dot3'].forEach((id,i) => {
