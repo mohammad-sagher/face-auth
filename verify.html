@@ -130,11 +130,17 @@
     async function startVerify() {
       document.getElementById('btnStart').style.display = 'none';
       showStatus('loading','⏳ تحميل نماذج الذكاء الاصطناعي...');
+          await faceapi.nets.tinyFaceDetector.loadFromUri(
+          'https://justadudewhohacks.github.io/face-api.js/models'
+          );
 
-      await faceapi.nets.ssdMobilenetv1.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
-      await faceapi.nets.faceLandmark68Net.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
-      await faceapi.nets.faceRecognitionNet.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights');
+          await faceapi.nets.faceLandmark68Net.loadFromUri(
+          'https://justadudewhohacks.github.io/face-api.js/models'
+          );
 
+          await faceapi.nets.faceRecognitionNet.loadFromUri(
+          'https://justadudewhohacks.github.io/face-api.js/models'
+          );
       showStatus('loading','⏳ تحميل الوجوه المصرح لهم من Firebase...');
       await loadKnownFaces();
 
@@ -176,8 +182,13 @@
       showStatus('loading','🧠 جاري التحليل...');
       document.getElementById('btnCapture').disabled = true;
 
-      const detection = await faceapi.detectSingleFace(video).withFaceLandmarks().withFaceDescriptor();
-
+      const detection = await faceapi
+      .detectSingleFace(
+        video,
+        new faceapi.TinyFaceDetectorOptions()
+      )
+.withFaceLandmarks()
+.withFaceDescriptor();
       if (!detection) {
         showStatus('error','❌ لم يتم اكتشاف وجه — تأكد من الإضاءة');
         document.getElementById('btnCapture').disabled = false;
