@@ -111,7 +111,7 @@
         const snap = await db.ref('owner').once('value');
         const owner = snap.val();
         if (!owner) { showStatus('statusBox1','error','❌ لا يوجد مالك مسجل — سجّل المالك أولاً'); return; }
-        if (btoa(pass) !== owner.password) { showStatus('statusBox1','error','❌ كلمة المرور غير صحيحة'); return; }
+        if (btoa(pass) !== owner.userPassword){ showStatus('statusBox1','error','❌ كلمة المرور غير صحيحة'); return; }
         document.getElementById('step1').style.display = 'none';
         document.getElementById('step2').style.display = 'block';
         setDot(1);
