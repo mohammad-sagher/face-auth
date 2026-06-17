@@ -407,6 +407,16 @@ function unlockOwnerRegistration(){
       registeredAt:
       new Date().toISOString()
 
+        });
+        await db.ref('logs').push({
+      type: 'OWNER_REGISTERED',
+      message: `تم تسجيل المالك ${name}`,
+      timestamp: Date.now()
+        });
+        await db.ref('logs').push({
+      type: 'OWNER_REPLACED',
+      message: `تم استبدال المالك بواسطة ${name}`,
+      timestamp: Date.now()
     });
 
     document.getElementById(
@@ -435,6 +445,7 @@ function unlockOwnerRegistration(){
   }
 
 }
+
 
     function setDot(active) {
       ['dot1','dot2','dot3'].forEach((id,i) => {

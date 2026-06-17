@@ -191,7 +191,12 @@
           name,
           descriptor: capturedDescriptor,
           addedAt: new Date().toISOString()
-        });
+              });
+      await db.ref('logs').push({
+        type: 'USER_ADDED',
+        message: `تم إضافة المستخدم ${name}`,
+        timestamp: Date.now()
+      });
         document.getElementById('step3').style.display = 'none';
         document.getElementById('step4').style.display = 'block';
         document.getElementById('savedName').textContent = name + ' — تمت الإضافة بنجاح ✓';

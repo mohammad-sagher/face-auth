@@ -152,6 +152,16 @@
         document.getElementById('btnStop').style.display = 'flex';
         document.getElementById('btnCapture').style.display = 'flex';
         showStatus('success','✅ الكاميرا تعمل — اضغط "التقاط والتحقق" عندما يكون الوجه واضحًا');
+        await db.ref('logs').push({
+        type: 'ACCESS_GRANTED',
+        message: `تم التعرف على ${matchedName}`,
+        timestamp: Date.now()
+      });
+            await db.ref('logs').push({
+        type: 'ACCESS_GRANTED',
+        message: `تم التعرف على ${matchedName}`,
+        timestamp: Date.now()
+      });
       } catch(e) {
         document.getElementById('btnStart').style.display = 'flex';
         showStatus('error','❌ ' + e.message);
