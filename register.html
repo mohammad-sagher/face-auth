@@ -408,17 +408,23 @@ function unlockOwnerRegistration(){
       new Date().toISOString()
 
         });
-        await db.ref('logs').push({
-      type: 'OWNER_REGISTERED',
-      message: `تم تسجيل المالك ${name}`,
-      timestamp: Date.now()
-        });
-        await db.ref('logs').push({
-      type: 'OWNER_REPLACED',
-      message: `تم استبدال المالك بواسطة ${name}`,
-      timestamp: Date.now()
-    });
+     if(existingOwner){
 
+      await db.ref('logs').push({
+        type: 'OWNER_REPLACED',
+        message: `تم استبدال المالك بواسطة ${name}`,
+        timestamp: Date.now()
+      });
+
+    }else{
+
+      await db.ref('logs').push({
+        type: 'OWNER_REGISTERED',
+        message: `تم تسجيل المالك ${name}`,
+        timestamp: Date.now()
+      });
+
+    }
     document.getElementById(
       'step2'
     ).style.display = 'none';
