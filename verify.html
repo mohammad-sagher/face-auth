@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>التحقق من السائق — Face Auth</title>
+  <title>التحقق من المشغل — AXIS AI Surveillance</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="shared.css">
@@ -40,7 +40,7 @@
     }
     .confidence-fill {
       height: 100%; border-radius: 2px;
-      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      background: linear-gradient(90deg, var(--accent-deep), var(--accent));
       transition: width .5s;
     }
 
@@ -77,8 +77,8 @@
 
       <div class="page-header">
         <div class="page-icon">🔍</div>
-        <h1 class="page-title">التحقق من السائق</h1>
-        <p class="page-sub">شغّل الكاميرا وسيتم التعرف على السائق مقارنةً بالوجوه المصرح لهم</p>
+        <h1 class="page-title">التحقق من المشغل</h1>
+        <p class="page-sub">شغّل الكاميرا للتحقق من الشخص المصرح قبل تفعيل نظام SCAN</p>
       </div>
 
       <!-- Live video -->
@@ -178,7 +178,7 @@
     }
 
     async function captureAndVerify() {
-      if (knownFaces.length === 0) { showStatus('error','❌ لا توجد وجوه مسجلة — سجّل المالك أولاً'); return; }
+      if (knownFaces.length === 0) { showStatus('error','❌ لا توجد وجوه مسجلة — سجّل مدير المشروع أو شخصاً مصرحاً أولاً'); return; }
       const video = document.getElementById('liveVideo');
       showStatus('loading','🧠 جاري التحليل...');
       document.getElementById('btnCapture').disabled = true;
