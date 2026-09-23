@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>إضافة مستخدم — Face Auth</title>
+  <title>إضافة شخص مصرح — AXIS AI Surveillance</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="shared.css">
@@ -26,16 +26,16 @@
         <div class="si-dot" id="dot3"></div>
       </div>
 
-      <!-- Step 1: Verify owner password -->
+      <!-- Step 1: Verify project manager password -->
       <div id="step1">
         <div class="page-header">
           <div class="page-icon">🔑</div>
-          <h1 class="page-title">إضافة مستخدم مصرح</h1>
-          <p class="page-sub">أدخل كلمة مرور المالك للتحقق من صلاحيتك</p>
+          <h1 class="page-title">إضافة شخص مصرح</h1>
+          <p class="page-sub">أدخل كلمة مرور مدير المشروع للتحقق من صلاحيتك</p>
         </div>
         <div class="field">
-          <label>كلمة مرور المالك</label>
-          <input type="password" id="ownerPass" placeholder="كلمة المرور التي سجّلتها كمالك">
+          <label>كلمة مرور مدير المشروع</label>
+          <input type="password" id="ownerPass" placeholder="كلمة المرور المسجلة لمدير المشروع">
         </div>
         <div class="status-box" id="statusBox1"></div>
         <button class="btn btn-primary" onclick="verifyOwner()">✅ تحقق والمتابعة</button>
@@ -45,8 +45,8 @@
       <div id="step2" style="display:none">
         <div class="page-header">
           <div class="page-icon">📷</div>
-          <h1 class="page-title">التقاط وجه المستخدم</h1>
-          <p class="page-sub">شغّل الكاميرا والتقط صورة الشخص المصرح له</p>
+          <h1 class="page-title">التقاط وجه الشخص المصرح</h1>
+          <p class="page-sub">شغّل الكاميرا والتقط صورة الشخص المصرح له بتشغيل النظام</p>
         </div>
 
         <div class="video-wrapper" id="videoWrapper" style="display:none">
@@ -66,15 +66,15 @@
       <div id="step3" style="display:none">
         <div class="page-header">
           <div class="page-icon">✍️</div>
-          <h1 class="page-title">اسم المستخدم</h1>
-          <p class="page-sub">أدخل اسم الشخص المصرح له ليظهر في نتائج التحقق</p>
+          <h1 class="page-title">بيانات الشخص المصرح</h1>
+          <p class="page-sub">أدخل اسم الشخص ليظهر في نتائج التحقق وسجل التشغيل</p>
         </div>
         <div class="field">
-          <label>الاسم الكامل</label>
+          <label>اسم الشخص المصرح</label>
           <input type="text" id="userName" placeholder="مثال: أحمد محمد">
         </div>
         <div class="status-box" id="statusBox3"></div>
-        <button class="btn btn-primary" onclick="saveUser()">💾 حفظ المستخدم</button>
+        <button class="btn btn-primary" onclick="saveUser()">💾 حفظ الشخص المصرح</button>
         <button class="btn btn-secondary" style="margin-top:8px" onclick="goStep2()">← رجوع</button>
       </div>
 
@@ -86,7 +86,7 @@
           <div class="rb-name" id="savedName"></div>
           <p style="color:var(--muted);font-size:14px;text-align:center;margin-top:8px">تم حفظ بصمة الوجه في Firebase بنجاح</p>
         </div>
-        <button class="btn btn-primary" onclick="addAnother()">➕ إضافة شخص آخر</button>
+        <button class="btn btn-primary" onclick="addAnother()">➕ إضافة شخص مصرح آخر</button>
         <a href="verify.html" class="btn btn-secondary" style="margin-top:8px">🔍 تجربة التحقق</a>
       </div>
 
@@ -110,7 +110,7 @@
       try {
         const snap = await db.ref('owner').once('value');
         const owner = snap.val();
-        if (!owner) { showStatus('statusBox1','error','❌ لا يوجد مالك مسجل — سجّل المالك أولاً'); return; }
+        if (!owner) { showStatus('statusBox1','error','❌ لا يوجد مدير مشروع مسجل — سجّل مدير المشروع أولاً'); return; }
         if (btoa(pass) !== owner.userPassword){ showStatus('statusBox1','error','❌ كلمة المرور غير صحيحة'); return; }
         document.getElementById('step1').style.display = 'none';
         document.getElementById('step2').style.display = 'block';
@@ -183,7 +183,7 @@
 
     async function saveUser() {
       const name = document.getElementById('userName').value.trim();
-      if (!name) { showStatus('statusBox3','error','❌ أدخل اسم المستخدم'); return; }
+      if (!name) { showStatus('statusBox3','error','❌ أدخل اسم الشخص المصرح'); return; }
       showStatus('statusBox3','loading','⏳ جاري الحفظ...');
       try {
         const key = db.ref('authorized_users').push().key;
@@ -194,7 +194,7 @@
               });
       await db.ref('logs').push({
         type: 'USER_ADDED',
-        message: `تم إضافة المستخدم ${name}`,
+        message: `تم إضافة الشخص المصرح ${name}`,
         timestamp: Date.now()
       });
         document.getElementById('step3').style.display = 'none';
