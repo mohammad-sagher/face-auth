@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-  <title>تسجيل المالك — Face Auth</title>
+  <title>تسجيل مدير المشروع — AXIS AI Surveillance</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;900&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="shared.css">
@@ -32,11 +32,11 @@
     <div class="page-icon">🔒</div>
 
     <h1 class="page-title">
-      يوجد مالك مسجل مسبقاً
+      يوجد مدير مشروع مسجل مسبقاً
     </h1>
 
     <p class="page-sub">
-      لإعادة تسجيل مالك جديد يجب إدخال كلمة مرور المدير
+      لإعادة تسجيل مدير مشروع جديد يجب إدخال كلمة مرور المدير
     </p>
   </div>
 
@@ -56,7 +56,7 @@
     class="btn btn-primary"
     onclick="unlockOwnerRegistration()">
 
-    إعادة تسجيل المالك
+    إعادة تسجيل مدير المشروع
 
   </button>
 
@@ -65,8 +65,8 @@
       <div id="step1">
         <div class="page-header">
           <div class="page-icon">👤</div>
-          <h1 class="page-title">تسجيل المالك</h1>
-          <p class="page-sub">شغّل الكاميرا والتقط صورتك لتسجيلها كمالك للسيارة</p>
+          <h1 class="page-title">تسجيل مدير المشروع</h1>
+          <p class="page-sub">شغّل الكاميرا وسجّل وجه المسؤول عن إدارة وتشغيل النظام</p>
         </div>
 
         <div class="video-wrapper" id="videoWrapper" style="display:none">
@@ -90,9 +90,9 @@
 
       <div class="page-header">
         <div class="page-icon">🔐</div>
-        <h1 class="page-title">بيانات المالك</h1>
+        <h1 class="page-title">بيانات مدير المشروع</h1>
         <p class="page-sub">
-          أدخل بيانات المالك وكلمات المرور الخاصة بالنظام
+          أدخل بيانات مدير المشروع وكلمات المرور الخاصة بالنظام
         </p>
       </div>
 
@@ -119,7 +119,7 @@
         <label>كلمة مرور المدير (Master Password)</label>
         <input type="password"
           id="masterPass"
-          placeholder="تستخدم لإعادة تسجيل المالك">
+          placeholder="تستخدم لإعادة تسجيل مدير المشروع">
       </div>
 
       <div class="field">
@@ -151,10 +151,10 @@
           <div class="rb-status result-approved">تم التسجيل!</div>
           <div class="rb-name" id="successName"></div>
           <p style="color:var(--muted);font-size:14px;text-align:center;margin-top:8px;line-height:1.7">
-            تم حفظ بصمتك في Firebase بنجاح.<br>يمكنك الآن إضافة مستخدمين مصرح لهم.
+            تم حفظ بصمتك في Firebase بنجاح.<br>يمكنك الآن إضافة أشخاص مصرح لهم.
           </p>
         </div>
-        <a href="add-user.html" class="btn btn-primary" style="margin-top:8px">➕ إضافة مستخدم مصرح</a>
+        <a href="add-user.html" class="btn btn-primary" style="margin-top:8px">➕ إضافة شخص مصرح</a>
         <a href="verify.html" class="btn btn-secondary" style="margin-top:8px">🔍 تجربة التحقق</a>
       </div>
 
@@ -412,7 +412,7 @@ function unlockOwnerRegistration(){
 
       await db.ref('logs').push({
         type: 'OWNER_REPLACED',
-        message: `تم استبدال المالك بواسطة ${name}`,
+        message: `تم استبدال مدير المشروع بواسطة ${name}`,
         timestamp: Date.now()
       });
 
@@ -420,7 +420,7 @@ function unlockOwnerRegistration(){
 
       await db.ref('logs').push({
         type: 'OWNER_REGISTERED',
-        message: `تم تسجيل المالك ${name}`,
+        message: `تم تسجيل مدير المشروع ${name}`,
         timestamp: Date.now()
       });
 
